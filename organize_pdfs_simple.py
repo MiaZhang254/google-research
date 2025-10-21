@@ -102,9 +102,10 @@ def organize_pdfs(source_dir, target_base_dir=None):
         new_folder_path.mkdir(parents=True, exist_ok=True)
         print(f"    📁 新文件夹: {new_folder_name}")
         
-        # 收集并复制所有PDF文件
+        # 收集并复制所有PDF文件（去重）
         pdf_count = 0
-        file_counter = {}  # 用于处理重名文件
+        copied_files = set()  # 用于记录已复制的文件名，避免重复
+        skipped_count = 0  # 记录跳过的重复文件数
         
         for folder in folders:
             # 遍历文件夹中的所有PDF文件（包括子目录）
@@ -114,27 +115,18 @@ def organize_pdfs(source_dir, target_base_dir=None):
             
             for pdf_file in all_pdfs:
                 try:
+                    # 检查是否已复制过同名文件
+                    if pdf_file.name in copied_files:
+                        print(f"      ⊘ 跳过重复文件: {pdf_file.name} (来自: {folder.name})")
+                        skipped_count += 1
+                        continue
+                    
                     # 直接复制到新文件夹根目录，不保留文件夹结构
                     target_file = new_folder_path / pdf_file.name
                     
-                    # 处理文件名冲突：如果文件已存在，添加序号
-                    if target_file.exists():
-                        base_name = pdf_file.stem
-                        extension = pdf_file.suffix
-                        
-                        # 记录重名次数
-                        if pdf_file.name not in file_counter:
-                            file_counter[pdf_file.name] = 1
-                        else:
-                            file_counter[pdf_file.name] += 1
-                        
-                        counter = file_counter[pdf_file.name]
-                        new_name = f"{base_name}_{counter}{extension}"
-                        target_file = new_folder_path / new_name
-                        print(f"      ⚠️  文件名冲突，重命名为: {new_name}")
-                    
                     # 复制文件
                     shutil.copy2(pdf_file, target_file)
+                    copied_files.add(pdf_file.name)  # 记录已复制的文件名
                     pdf_count += 1
                     total_pdfs += 1
                     print(f"      ✓ 复制: {pdf_file.name} (来自: {folder.name})")
@@ -142,6 +134,8 @@ def organize_pdfs(source_dir, target_base_dir=None):
                 except Exception as e:
                     print(f"      ❌ 错误：复制 {pdf_file.name} 时出错: {e}")
         
+        if skipped_count > 0:
+            print(f"    ⊘ 跳过 {skipped_count} 个重复文件")
         print(f"    ✓ 本组共复制 {pdf_count} 个PDF文件到新文件夹根目录")
     
     print("\n" + "=" * 70)
