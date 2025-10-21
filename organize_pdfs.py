@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PDF文件整理脚本
-将前13位相同的文件夹中的PDF文件复制到统一的新文件夹中
+文件整理脚本
+将前13位相同的文件夹中的所有文件（PDF、OFD等）复制到统一的新文件夹中
 """
 
 import os
@@ -44,9 +44,9 @@ def get_first_13_chars(folder_name):
     return folder_name[:13] if len(folder_name) >= 13 else folder_name
 
 
-def organize_pdfs(source_dir, target_base_dir=None):
+def organize_files(source_dir, target_base_dir=None):
     """
-    整理PDF文件
+    整理文件（PDF、OFD等所有文件）
     
     Args:
         source_dir: 源目录路径（如：E:\University\graduate\）
@@ -103,40 +103,41 @@ def organize_pdfs(source_dir, target_base_dir=None):
         new_folder_path.mkdir(parents=True, exist_ok=True)
         print(f"  创建新文件夹: {new_folder_name}")
         
-        # 收集并复制所有PDF文件（去重）
-        pdf_count = 0
+        # 收集并复制所有文件（去重）
+        file_count = 0
         copied_files = set()  # 用于记录已复制的文件名，避免重复
         skipped_count = 0  # 记录跳过的重复文件数
         
         for folder in folders:
-            # 遍历文件夹中的所有PDF文件（包括子目录）
-            pdf_files = list(folder.rglob("*.pdf"))
-            PDF_files = list(folder.rglob("*.PDF"))  # 大写扩展名
-            all_pdfs = pdf_files + PDF_files
+            # 遍历文件夹中的所有文件（包括子目录）
+            all_files = []
+            for item in folder.rglob("*"):
+                if item.is_file():  # 只处理文件，跳过目录
+                    all_files.append(item)
             
-            for pdf_file in all_pdfs:
+            for file_path in all_files:
                 try:
                     # 检查是否已复制过同名文件
-                    if pdf_file.name in copied_files:
-                        print(f"    ⊘ 跳过重复文件: {pdf_file.name} (来自: {folder.name})")
+                    if file_path.name in copied_files:
+                        print(f"    ⊘ 跳过重复文件: {file_path.name} (来自: {folder.name})")
                         skipped_count += 1
                         continue
                     
                     # 直接复制到新文件夹根目录，不保留文件夹结构
-                    target_file = new_folder_path / pdf_file.name
+                    target_file = new_folder_path / file_path.name
                     
                     # 复制文件
-                    shutil.copy2(pdf_file, target_file)
-                    copied_files.add(pdf_file.name)  # 记录已复制的文件名
-                    pdf_count += 1
-                    print(f"    复制: {pdf_file.name} (来自: {folder.name})")
+                    shutil.copy2(file_path, target_file)
+                    copied_files.add(file_path.name)  # 记录已复制的文件名
+                    file_count += 1
+                    print(f"    复制: {file_path.name} (来自: {folder.name})")
                     
                 except Exception as e:
-                    print(f"    错误：复制 {pdf_file.name} 时出错: {e}")
+                    print(f"    错误：复制 {file_path.name} 时出错: {e}")
         
         if skipped_count > 0:
             print(f"  ⊘ 跳过 {skipped_count} 个重复文件")
-        print(f"  共复制 {pdf_count} 个PDF文件到新文件夹根目录")
+        print(f"  共复制 {file_count} 个文件到新文件夹根目录")
     
     print("\n" + "=" * 60)
     print("处理完成！")
@@ -148,7 +149,7 @@ def main():
     default_source = r"E:\University\graduate"
     
     print("=" * 60)
-    print("PDF文件整理工具")
+    print("文件整理工具")
     print("=" * 60)
     print()
     
@@ -166,7 +167,7 @@ def main():
     print()
     
     # 执行整理
-    organize_pdfs(source_dir, target_dir)
+    organize_files(source_dir, target_dir)
 
 
 if __name__ == "__main__":
