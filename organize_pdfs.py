@@ -16,14 +16,24 @@ def extract_date_from_folder_name(folder_name):
     """
     从文件夹名中提取日期信息
     例如："2022 7A   537eee" -> "2022-07"
+         "202210A  3535" -> "2022-10"
     """
-    # 尝试匹配 "YYYY MM" 或 "YYYY M" 格式
-    pattern = r'^(\d{4})\s+(\d{1,2})'
-    match = re.match(pattern, folder_name)
+    # 尝试匹配 "YYYYMM" 格式（如：202210A）
+    pattern1 = r'^(\d{4})(\d{2})'
+    match1 = re.match(pattern1, folder_name)
     
-    if match:
-        year = match.group(1)
-        month = match.group(2).zfill(2)  # 补齐为两位数
+    if match1:
+        year = match1.group(1)
+        month = match1.group(2)
+        return f"{year}-{month}"
+    
+    # 尝试匹配 "YYYY MM" 或 "YYYY M" 格式（如：2022 7A）
+    pattern2 = r'^(\d{4})\s+(\d{1,2})'
+    match2 = re.match(pattern2, folder_name)
+    
+    if match2:
+        year = match2.group(1)
+        month = match2.group(2).zfill(2)  # 补齐为两位数
         return f"{year}-{month}"
     
     return None
@@ -95,26 +105,44 @@ def organize_pdfs(source_dir, target_base_dir=None):
         
         # 收集并复制所有PDF文件
         pdf_count = 0
+        file_counter = {}  # 用于处理重名文件
+        
         for folder in folders:
-            # 遍历文件夹中的所有PDF文件
-            for pdf_file in folder.rglob("*.pdf"):
+            # 遍历文件夹中的所有PDF文件（包括子目录）
+            pdf_files = list(folder.rglob("*.pdf"))
+            PDF_files = list(folder.rglob("*.PDF"))  # 大写扩展名
+            all_pdfs = pdf_files + PDF_files
+            
+            for pdf_file in all_pdfs:
                 try:
-                    # 构造目标文件路径
-                    relative_path = pdf_file.relative_to(folder)
-                    target_file = new_folder_path / folder.name / relative_path
+                    # 直接复制到新文件夹根目录，不保留文件夹结构
+                    target_file = new_folder_path / pdf_file.name
                     
-                    # 创建目标目录
-                    target_file.parent.mkdir(parents=True, exist_ok=True)
+                    # 处理文件名冲突：如果文件已存在，添加序号
+                    if target_file.exists():
+                        base_name = pdf_file.stem
+                        extension = pdf_file.suffix
+                        
+                        # 记录重名次数
+                        if pdf_file.name not in file_counter:
+                            file_counter[pdf_file.name] = 1
+                        else:
+                            file_counter[pdf_file.name] += 1
+                        
+                        counter = file_counter[pdf_file.name]
+                        new_name = f"{base_name}_{counter}{extension}"
+                        target_file = new_folder_path / new_name
+                        print(f"    ⚠️  文件名冲突，重命名为: {new_name}")
                     
                     # 复制文件
                     shutil.copy2(pdf_file, target_file)
                     pdf_count += 1
-                    print(f"    复制: {pdf_file.name}")
+                    print(f"    复制: {pdf_file.name} (来自: {folder.name})")
                     
                 except Exception as e:
-                    print(f"    错误：复制 {pdf_file} 时出错: {e}")
+                    print(f"    错误：复制 {pdf_file.name} 时出错: {e}")
         
-        print(f"  共复制 {pdf_count} 个PDF文件")
+        print(f"  共复制 {pdf_count} 个PDF文件到新文件夹根目录")
     
     print("\n" + "=" * 60)
     print("处理完成！")
